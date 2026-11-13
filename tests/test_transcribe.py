@@ -1,9 +1,21 @@
 import inspect
 import os
+import sys
 
 import numpy as np
 
 from faster_whisper import BatchedInferencePipeline, WhisperModel, decode_audio
+
+
+def test_transcribe_decoded_audio_without_pyav(monkeypatch):
+    monkeypatch.setitem(sys.modules, "av", None)
+
+    model = WhisperModel("tiny.en")
+    audio_array = np.zeros(16000, dtype=np.float32)
+    segments, info = model.transcribe(audio_array, language="en")
+    assert info.language == "en"
+    assert info.duration == 1.0
+    list(segments)
 
 
 def test_supported_languages():

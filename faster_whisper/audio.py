@@ -1,9 +1,7 @@
-"""We use the PyAV library to decode the audio: https://github.com/PyAV-Org/PyAV
+"""Audio file decoding helpers.
 
-The advantage of PyAV is that it bundles the FFmpeg libraries so there is no additional
-system dependencies. FFmpeg does not need to be installed on the system.
-
-However, the API is quite low-level so we need to manipulate audio frames directly.
+PyAV is imported only for file decoding. Callers that already have decoded float32
+audio can use the transcription APIs without installing PyAV or FFmpeg.
 """
 
 import gc
@@ -12,14 +10,7 @@ import itertools
 
 from typing import BinaryIO, Union
 
-import av
 import numpy as np
-
-# `metadata_errors` was removed in PyAV 19; pass it only for older versions
-# to preserve the previous behavior.
-_AV_OPEN_KWARGS = (
-    {"metadata_errors": "ignore"} if int(av.__version__.split(".")[0]) < 19 else {}
-)
 
 
 def decode_audio(
@@ -39,7 +30,25 @@ def decode_audio(
 
       If `split_stereo` is enabled, the function returns a 2-tuple with the
       separated left and right channels.
+
+    Raises:
+      ImportError: If PyAV is not installed.
     """
+    try:
+        import av
+    except ImportError as exc:
+        raise ImportError(
+            "Decoding audio files requires the optional 'av' dependency. "
+            "Install it with `pip install faster-whisper[av]`."
+        ) from exc
+
+    # `metadata_errors` was removed in PyAV 19; pass it only for older versions
+    # to preserve the previous behavior.
+    av_open_kwargs = (
+        {"metadata_errors": "ignore"}
+        if int(av.__version__.split(".")[0]) < 19
+        else {}
+    )
     resampler = av.audio.resampler.AudioResampler(
         format="s16",
         layout="mono" if not split_stereo else "stereo",
@@ -49,9 +58,9 @@ def decode_audio(
     raw_buffer = io.BytesIO()
     dtype = None
 
-    with av.open(input_file, mode="r", **_AV_OPEN_KWARGS) as container:
+    with av.open(input_file, mode="r", **av_open_kwargs) as container:
         frames = container.decode(audio=0)
-        frames = _ignore_invalid_frames(frames)
+        frames = _ignore_invalid_frames(frames, av.error.InvalidDataError)
         frames = _group_frames(frames, 500000)
         frames = _resample_frames(frames, resampler)
 
@@ -82,7 +91,7 @@ def decode_audio(
     return audio
 
 
-def _ignore_invalid_frames(frames):
+def _ignore_invalid_frames(frames, invalid_data_error):
     iterator = iter(frames)
 
     while True:
@@ -90,7 +99,7 @@ def _ignore_invalid_frames(frames):
             yield next(iterator)
         except StopIteration:
             break
-        except av.error.InvalidDataError:
+        except invalid_data_error:
             continue
 
 

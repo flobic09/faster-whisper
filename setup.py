@@ -28,6 +28,7 @@ install_requires = get_requirements(os.path.join(base_dir, "requirements.txt"))
 conversion_requires = get_requirements(
     os.path.join(base_dir, "requirements.conversion.txt")
 )
+audio_requires = ["av>=11"]
 
 setup(
     name="faster-whisper",
@@ -38,6 +39,11 @@ setup(
     long_description_content_type="text/markdown",
     author="Guillaume Klein",
     url="https://github.com/SYSTRAN/faster-whisper",
+    project_urls={
+        "Homepage": "https://github.com/SYSTRAN/faster-whisper",
+        "Repository": "https://github.com/flobic09/faster-whisper",
+        "Upstream Repository": "https://github.com/SYSTRAN/faster-whisper",
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -54,8 +60,10 @@ setup(
     python_requires=">=3.9",
     install_requires=install_requires,
     extras_require={
+        "av": audio_requires,
         "conversion": conversion_requires,
         "dev": [
+            "av>=11",
             "black==23.*",
             "flake8==6.*",
             "isort==5.*",

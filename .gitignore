@@ -13,3 +13,8 @@ venv/
 # Ignore IDE, Editor Files
 .idea/
 .vscode/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
